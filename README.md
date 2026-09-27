@@ -1,58 +1,116 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Registro de Usuarios con Brevo SMTP — Laravel 13
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Trabajo práctico de la materia Programación IV, Tecnicatura Universitaria en Programación (UTN).
 
-## About Laravel
+Sistema de registro de usuarios con validaciones avanzadas, envío automatizado de correo de bienvenida mediante Brevo SMTP y procesamiento asíncrono con colas (Queues) de Laravel.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Tecnologías utilizadas
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- Laravel 13
+- Blade (motor de plantillas)
+- SQLite (base de datos)
+- Brevo (servicio SMTP para envío de correos transaccionales)
+- Sistema de colas de Laravel (Queue database driver)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Funcionalidades
 
-## Learning Laravel
+- Formulario de registro con validaciones completas:
+  - Nombre: requerido, mínimo 3 caracteres, máximo 255
+  - Correo: requerido, formato válido (RFC + verificación DNS), único en la base de datos
+  - Contraseña: requerida, mínimo 8 caracteres, con confirmación obligatoria
+- Mensajes de error personalizados y retención de valores previos en el formulario
+- Envío de correo HTML de bienvenida al usuario registrado
+- Procesamiento asíncrono del envío de correo mediante un Job dedicado (`SendWelcomeEmailJob`), evitando bloquear la respuesta al usuario
+- Manejo de reintentos automáticos en caso de fallo del envío (hasta 3 intentos)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Estructura relevante del proyecto
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```
+app/
+  Http/Controllers/RegisterController.php
+  Jobs/SendWelcomeEmailJob.php
+  Mail/WelcomeUserMail.php
+resources/views/
+  auth/register.blade.php
+  emails/welcome.blade.php
+routes/web.php
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## Instalación
 
-## Contributing
+1. Cloná el repositorio:
+```bash
+git clone https://github.com/AlexanderB97/laravel-brevo-registro.git
+cd laravel-brevo-registro
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+2. Instalá las dependencias:
+```bash
+composer install
+```
 
-## Code of Conduct
+3. Copiá el archivo de entorno de ejemplo:
+```bash
+copy .env.example .env
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+4. Generá la clave de aplicación:
+```bash
+php artisan key:generate
+```
 
-## Security Vulnerabilities
+5. Completá en tu `.env` las credenciales de tu cuenta de Brevo:
+```env
+MAIL_MAILER=smtp
+MAIL_HOST=smtp-relay.brevo.com
+MAIL_PORT=587
+MAIL_USERNAME=tu_login_smtp_de_brevo
+MAIL_PASSWORD=tu_smtp_key_de_64_caracteres
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS=tu_remitente_verificado@ejemplo.com
+MAIL_FROM_NAME="${APP_NAME}"
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+6. Ejecutá las migraciones:
+```bash
+php artisan migrate
+```
 
-## License
+## Ejecución
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Se necesitan dos terminales abiertas simultáneamente:
+
+**Terminal 1 — Servidor de la aplicación:**
+```bash
+php artisan serve
+```
+
+**Terminal 2 — Procesador de colas:**
+```bash
+php artisan queue:work
+```
+
+Luego, accedé desde el navegador a:
+```
+http://127.0.0.1:8000/register
+```
+
+## Flujo de prueba
+
+1. Enviar el formulario vacío para verificar que se muestren los errores de validación.
+2. Completar con un nombre corto o una contraseña débil para verificar los mensajes específicos.
+3. Completar con datos válidos y un correo real: el usuario se guarda en la base de datos y el Job de envío se encola.
+4. En la terminal de `queue:work`, se debe ver el estado `DONE` una vez procesado el envío.
+5. Verificar la recepción del correo de bienvenida en la bandeja de entrada (o spam) del correo registrado.
+
+## Manejo de errores en las colas
+
+```bash
+php artisan queue:failed        # Lista los trabajos fallidos
+php artisan queue:retry {id}    # Reintenta un trabajo puntual
+php artisan queue:retry all     # Reintenta todos los trabajos fallidos
+```
+
+## Autor
+
+Alexander Benítez — Tecnicatura Universitaria en Programación, UTN
